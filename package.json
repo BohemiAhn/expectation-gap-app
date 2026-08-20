@@ -1,0 +1,8 @@
+{
+  "name": "expectation-gap-app",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@vercel/kv": "^2.0.0"
+  }
+}

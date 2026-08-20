@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>기대치 정렬 - Expectation Align</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --bg:#FAFAF8;
+    --surface:#FFFFFF;
+    --surface-2:#F2F0EA;
+    --border:#E4E1D8;
+    --text:#2B2B27;
+    --text-2:#6B6B63;
+    --text-3:#9A9890;
+    --sage:#4E7D5B;
+    --sage-light:#E7F0E8;
+    --sage-text:#2F5B3B;
+    --blue:#3E6E8C;
+    --blue-light:#E7EEF3;
+    --blue-text:#254A60;
+    --amber:#B97A3D;
+    --amber-light:#F6EBDD;
+    --amber-text:#7A4F22;
+    --radius:12px;
+    --radius-sm:8px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:880px;margin:0 auto;padding:24px 20px 80px;}
+
+  /* 상단 바 */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding-bottom:20px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-mark{
+    width:28px;height:28px;border-radius:8px;
+    background:linear-gradient(135deg, var(--sage) 0%, var(--blue) 100%);
+    flex-shrink:0;
+  }
+  .brand-name{font-size:15px;font-weight:600;letter-spacing:-0.2px;}
+
+  .role-badge{
+    display:flex;align-items:center;gap:6px;
+    font-size:13px;color:var(--text-2);
+  }
+  .role-pill{
+    padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;
+  }
+  .role-pill.leader{background:var(--blue-light);color:var(--blue-text);}
+  .role-pill.member{background:var(--sage-light);color:var(--sage-text);}
+  .role-pill.none{background:var(--surface-2);color:var(--text-3);}
+
+  /* 업무 요약 카드 */
+  .task-summary{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:16px 18px;
+    margin-bottom:20px;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:16px;
+  }
+  .task-summary .title{font-size:15px;font-weight:600;margin:0 0 4px;}
+  .task-summary .meta{font-size:12.5px;color:var(--text-2);margin:0;}
+  .task-summary.empty{color:var(--text-3);font-size:13.5px;}
+  .status-chip{
+    font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:999px;
+    background:var(--surface-2);color:var(--text-2);white-space:nowrap;
+  }
+
+  /* 탭 네비게이션 */
+  .tabs{
+    display:grid;grid-template-columns:repeat(4,1fr);
+    gap:8px;margin-bottom:24px;
+  }
+  .tab-btn{
+    display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+    padding:12px 14px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    cursor:pointer;
+    text-align:left;
+    transition:border-color .15s, background .15s;
+  }
+  .tab-btn .num{font-size:11px;color:var(--text-3);font-weight:600;}
+  .tab-btn .label{font-size:13.5px;font-weight:600;color:var(--text);}
+  .tab-btn:hover{border-color:var(--text-3);}
+  .tab-btn.active{
+    border-color:var(--sage);
+    background:var(--sage-light);
+  }
+  .tab-btn.active .num, .tab-btn.active .label{color:var(--sage-text);}
+  .tab-btn.locked{opacity:.5;cursor:not-allowed;}
+  .tab-btn.locked:hover{border-color:var(--border);}
+
+  /* 탭 콘텐츠 */
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .placeholder{
+    background:var(--surface);
+    border:1px dashed var(--border);
+    border-radius:var(--radius);
+    padding:48px 24px;
+    text-align:center;
+    color:var(--text-3);
+  }
+  .placeholder .icon{font-size:22px;margin-bottom:10px;}
+  .placeholder .msg{font-size:14px;color:var(--text-2);}
+  .placeholder .step{font-size:12px;color:var(--text-3);margin-top:6px;}
+
+  /* Gemini 키 안내 바 */
+  .keybar{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--amber-light);
+    border:1px solid #E8D3B4;
+    border-radius:var(--radius-sm);
+    padding:10px 14px;
+    margin-bottom:20px;
+    font-size:13px;
+  }
+  .keybar.ok{background:var(--sage-light);border-color:#CFE3D2;}
+  .keybar .txt{color:var(--amber-text);}
+  .keybar.ok .txt{color:var(--sage-text);}
+  .btn{
+    border:none;border-radius:var(--radius-sm);
+    padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;
+    background:var(--text);color:#fff;
+  }
+  .btn.ghost{background:transparent;color:var(--text-2);border:1px solid var(--border);}
+
+  /* 모달 */
+  .modal-backdrop{
+    display:none;position:fixed;inset:0;background:rgba(30,28,24,.4);
+    align-items:center;justify-content:center;padding:20px;z-index:50;
+  }
+  .modal-backdrop.open{display:flex;}
+  .modal{
+    background:var(--surface);border-radius:var(--radius);
+    padding:24px;max-width:420px;width:100%;
+    border:1px solid var(--border);
+  }
+  .modal h3{margin:0 0 8px;font-size:16px;}
+  .modal p{margin:0 0 16px;font-size:13px;color:var(--text-2);line-height:1.6;}
+  .modal input{
+    width:100%;padding:10px 12px;border:1px solid var(--border);
+    border-radius:var(--radius-sm);font-size:13px;margin-bottom:14px;
+    font-family:inherit;
+  }
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;}
+
+  .key-guide{
+    background:var(--surface-2);border-radius:var(--radius-sm);
+    padding:12px 14px;margin-bottom:14px;
+  }
+  .key-guide-title{font-size:12.5px;font-weight:700;color:var(--text);margin:0 0 8px;}
+  .key-guide ol{margin:0 0 8px;padding-left:18px;}
+  .key-guide li{font-size:12.5px;color:var(--text-2);line-height:1.7;}
+  .key-guide a{color:var(--blue-text);font-weight:600;text-decoration:underline;}
+  .key-guide-note{font-size:11.5px;color:var(--text-3);margin:0;line-height:1.6;}
+
+  /* 탭1: 업무 설정 폼 */
+  .card{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:22px;
+  }
+  .field{margin-bottom:16px;}
+  .field label{
+    display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text);
+  }
+  .field input, .field textarea{
+    width:100%;padding:10px 12px;border:1px solid var(--border);
+    border-radius:var(--radius-sm);font-size:13.5px;font-family:inherit;
+    background:var(--bg);color:var(--text);
+  }
+  .field textarea{min-height:72px;resize:vertical;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .form-actions{margin-top:20px;display:flex;justify-content:flex-end;}
+
+  .invite-box{
+    display:flex;align-items:center;gap:8px;
+    background:var(--surface-2);border:1px solid var(--border);
+    border-radius:var(--radius-sm);padding:10px 12px;margin-top:8px;
+  }
+  .invite-box .url{
+    flex:1;font-size:12px;color:var(--text-2);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-family:'Pretendard',monospace;
+  }
+  .invite-label{font-size:12.5px;font-weight:600;color:var(--text-2);margin:18px 0 0;}
+  .invite-label:first-child{margin-top:0;}
+  .info-row{display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border);}
+  .info-row:last-child{border-bottom:none;}
+  .info-row .k{color:var(--text-2);}
+  .info-row .v{font-weight:600;color:var(--text);}
+
+  /* 탭2: 기대치 작성 */
+  .area-block{margin-bottom:22px;}
+  .area-block:last-child{margin-bottom:0;}
+  .area-head{
+    display:flex;align-items:baseline;gap:8px;margin-bottom:10px;
+  }
+  .area-head .area-code{
+    font-size:11px;font-weight:700;color:var(--sage-text);
+    background:var(--sage-light);padding:2px 8px;border-radius:999px;
+    letter-spacing:.3px;
+  }
+  .area-head .area-name{font-size:14px;font-weight:600;}
+  .q-item{margin-bottom:14px;}
+  .q-item:last-child{margin-bottom:0;}
+  .q-item label{
+    display:block;font-size:13px;color:var(--text-2);margin-bottom:6px;line-height:1.5;
+  }
+  .q-item textarea{
+    width:100%;padding:10px 12px;border:1px solid var(--border);
+    border-radius:var(--radius-sm);font-size:13.5px;font-family:inherit;
+    background:var(--bg);color:var(--text);min-height:60px;resize:vertical;
+  }
+  .answer-view{
+    font-size:13.5px;color:var(--text);
+    background:var(--surface-2);border-radius:var(--radius-sm);
+    padding:10px 12px;line-height:1.6;white-space:pre-wrap;
+  }
+  .submitted-note{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:18px;
+  }
+  .submitted-note .txt{font-size:13px;color:var(--sage-text);font-weight:600;}
+  .wait-note{font-size:13px;color:var(--text-2);margin-top:14px;}
+
+  /* 탭3: Gap 분석 */
+  .gap-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .gap-toolbar .hint{font-size:12.5px;color:var(--text-3);}
+  .gap-card{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:20px;margin-bottom:16px;
+  }
+  .gap-card-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .gap-level{
+    font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;
+  }
+  .gap-level.high{background:var(--amber-light);color:var(--amber-text);}
+  .gap-level.medium{background:var(--blue-light);color:var(--blue-text);}
+  .gap-level.low{background:var(--sage-light);color:var(--sage-text);}
+  .gap-cols{
+    display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;
+  }
+  .gap-col h4{font-size:12.5px;font-weight:700;color:var(--text-2);margin:0 0 8px;}
+  .gap-col .a{
+    font-size:13px;line-height:1.6;background:var(--surface-2);
+    border-radius:var(--radius-sm);padding:9px 11px;margin-bottom:8px;white-space:pre-wrap;
+  }
+  .gap-desc{
+    font-size:13.5px;line-height:1.65;color:var(--text);
+    background:var(--bg);border:1px solid var(--border);
+    border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;
+  }
+  .gap-desc .lbl{font-size:11.5px;font-weight:700;color:var(--text-3);display:block;margin-bottom:6px;}
+  .iq-list{margin:0;padding:0;list-style:none;}
+  .iq-list li{
+    font-size:13px;line-height:1.6;padding:9px 12px;margin-bottom:6px;
+    background:var(--sage-light);color:var(--sage-text);border-radius:var(--radius-sm);
+  }
+  .iq-list li:last-child{margin-bottom:0;}
+  .analyzing-box{text-align:center;padding:40px 20px;color:var(--text-2);font-size:13.5px;}
+
+  /* 탭4: 기대치 합의 */
+  .agree-block{margin-bottom:22px;}
+  .agree-block:last-child{margin-bottom:0;}
+  .gap-summary{
+    display:flex;align-items:flex-start;gap:8px;
+    background:var(--surface-2);border-radius:var(--radius-sm);
+    padding:10px 12px;margin-bottom:10px;font-size:12.5px;color:var(--text-2);line-height:1.6;
+  }
+  .agree-block textarea{
+    width:100%;padding:10px 12px;border:1px solid var(--border);
+    border-radius:var(--radius-sm);font-size:13.5px;font-family:inherit;
+    background:var(--bg);color:var(--text);min-height:70px;resize:vertical;
+  }
+  .agreed-banner{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--sage-light);color:var(--sage-text);
+    border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:18px;font-size:13px;font-weight:600;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-name">기대치 정렬</div>
+    </div>
+    <div class="role-badge">
+      <span id="roleLabel">역할 확인 중</span>
+      <span id="rolePill" class="role-pill none">-</span>
+    </div>
+  </div>
+
+  <div id="taskSummary" class="task-summary empty">
+    <div>업무가 아직 없습니다. 탭1에서 새 업무를 만들어 주세요.</div>
+  </div>
+
+  <div id="keybar" class="keybar">
+    <span class="txt">Gemini API 키가 설정되지 않았습니다. Gap 분석 기능을 쓰려면 등록해 주세요.</span>
+    <button class="btn" onclick="openKeyModal()">키 등록</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="1" onclick="switchTab(1)">
+      <span class="num">01</span><span class="label">업무 설정</span>
+    </button>
+    <button class="tab-btn" data-tab="2" onclick="switchTab(2)">
+      <span class="num">02</span><span class="label">기대치 작성</span>
+    </button>
+    <button class="tab-btn" data-tab="3" onclick="switchTab(3)">
+      <span class="num">03</span><span class="label">Gap 분석 · 면담</span>
+    </button>
+    <button class="tab-btn" data-tab="4" onclick="switchTab(4)">
+      <span class="num">04</span><span class="label">기대치 합의</span>
+    </button>
+  </div>
+
+  <section class="tab-panel active" data-panel="1">
+    <div id="tab1Content"></div>
+  </section>
+
+  <section class="tab-panel" data-panel="2">
+    <div id="tab2Content"></div>
+  </section>
+
+  <section class="tab-panel" data-panel="3">
+    <div id="tab3Content"></div>
+  </section>
+
+  <section class="tab-panel" data-panel="4">
+    <div id="tab4Content"></div>
+  </section>
+
+</div>
+
+<div id="keyModal" class="modal-backdrop">
+  <div class="modal">
+    <h3>Gemini API 키 등록</h3>
+    <p>이 기기의 브라우저에만 저장되며 서버로 전송되지 않습니다. 본인 명의 Gemini API 키를 발급받아 입력해 주세요.</p>
+    <div class="key-guide">
+      <p class="key-guide-title">키 발급 방법</p>
+      <ol>
+        <li>아래 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio 바로가기</a> 클릭 (구글 계정 로그인 필요)</li>
+        <li>"Create API key" 버튼 클릭</li>
+        <li>기존 프로젝트 선택 또는 새 프로젝트 생성 후 발급</li>
+        <li>생성된 키(AIza로 시작)를 복사해 아래 칸에 붙여넣기</li>
+      </ol>
+      <p class="key-guide-note">무료로 발급 가능하며, 발급 즉시 사용할 수 있습니다. 키는 절대 다른 사람과 공유하지 마세요.</p>
+    </div>
+    <input id="keyInput" type="password" placeholder="AIza..." autocomplete="off">
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeKeyModal()">취소</button>
+      <button class="btn" onclick="saveKey()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---- 상태 로드: URL 파라미터(taskId, role) + localStorage(Gemini 키) ----
+  const params = new URLSearchParams(location.search);
+  const state = {
+    taskId: params.get('taskId') || null,
+    role: params.get('role') || null, // 'leader' | 'member'
+    geminiKey: localStorage.getItem('gemini_api_key') || null,
+    task: null // /api/state 로 채워질 예정 (3단계에서 연결)
+  };
+
+  function renderRole(){
+    const label = document.getElementById('roleLabel');
+    const pill = document.getElementById('rolePill');
+    if(state.role === 'leader'){
+      label.textContent = '팀장';
+      pill.textContent = 'LEADER';
+      pill.className = 'role-pill leader';
+    } else if(state.role === 'member'){
+      label.textContent = '팀원';
+      pill.textContent = 'MEMBER';
+      pill.className = 'role-pill member';
+    } else {
+      label.textContent = '역할 미지정';
+      pill.textContent = '-';
+      pill.className = 'role-pill none';
+    }
+  }
+
+  function renderKeybar(){
+    const bar = document.getElementById('keybar');
+    if(state.geminiKey){
+      bar.classList.add('ok');
+      bar.querySelector('.txt').textContent = 'Gemini API 키가 등록되어 있습니다.';
+      bar.querySelector('button').textContent = '키 변경';
+    } else {
+      bar.classList.remove('ok');
+      bar.querySelector('.txt').textContent = 'Gemini API 키가 설정되지 않았습니다. Gap 분석 기능을 쓰려면 등록해 주세요.';
+      bar.querySelector('button').textContent = '키 등록';
+    }
+  }
+
+  function switchTab(n){
+    document.querySelectorAll('.tab-btn').forEach(b=>{
+      b.classList.toggle('active', Number(b.dataset.tab) === n);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p=>{
+      p.classList.toggle('active', Number(p.dataset.panel) === n);
+    });
+  }
+
+  function openKeyModal(){
+    document.getElementById('keyInput').value = state.geminiKey || '';
+    document.getElementById('keyModal').classList.add('open');
+  }
+  function closeKeyModal(){
+    document.getElementById('keyModal').classList.remove('open');
+  }
+  function saveKey(){
+    const v = document.getElementById('keyInput').value.trim();
+    if(!v){ return; }
+    localStorage.setItem('gemini_api_key', v);
+    state.geminiKey = v;
+    renderKeybar();
+    closeKeyModal();
+  }
+
+  const STATUS_LABEL = { collecting: '답변 수집 중', analyzing: '분석 중', agreed: '합의 완료' };
+
+  function renderTaskSummary(){
+    const el = document.getElementById('taskSummary');
+    if(!state.task){
+      el.className = 'task-summary empty';
+      el.innerHTML = '<div>업무가 아직 없습니다. 탭1에서 새 업무를 만들어 주세요.</div>';
+      return;
+    }
+    const t = state.task;
+    el.className = 'task-summary';
+    el.innerHTML = `
+      <div>
+        <p class="title">${escapeHtml(t.title)}</p>
+        <p class="meta">팀장 ${escapeHtml(t.leaderName)} · 팀원 ${escapeHtml(t.memberName)}${t.dueDate ? ' · 완료 목표 ' + t.dueDate : ''}</p>
+      </div>
+      <span class="status-chip">${STATUS_LABEL[t.status] || t.status}</span>
+    `;
+  }
+
+  function escapeHtml(s){
+    return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function buildLink(role){
+    return `${location.origin}${location.pathname}?taskId=${state.taskId}&role=${role}`;
+  }
+
+  async function copyLink(role, btn){
+    const url = buildLink(role);
+    try{
+      await navigator.clipboard.writeText(url);
+      const old = btn.textContent;
+      btn.textContent = '복사됨';
+      setTimeout(()=>{ btn.textContent = old; }, 1500);
+    }catch(e){
+      prompt('아래 링크를 복사하세요', url);
+    }
+  }
+
+  function renderTab1(){
+    const el = document.getElementById('tab1Content');
+
+    // 이미 만들어진 업무가 있는 경우: 안내/초대 화면
+    if(state.taskId){
+      if(!state.task){
+        el.innerHTML = `<div class="placeholder"><div class="msg">업무 정보를 불러오는 중입니다...</div></div>`;
+        return;
+      }
+      const t = state.task;
+      if(state.role === 'member'){
+        el.innerHTML = `
+          <div class="card">
+            <div class="info-row"><span class="k">업무명</span><span class="v">${escapeHtml(t.title)}</span></div>
+            <div class="info-row"><span class="k">설명</span><span class="v">${escapeHtml(t.description || '-')}</span></div>
+            <div class="info-row"><span class="k">완료 목표</span><span class="v">${escapeHtml(t.dueDate || '-')}</span></div>
+            <div class="info-row"><span class="k">팀장</span><span class="v">${escapeHtml(t.leaderName)}</span></div>
+            <p style="margin:18px 0 0;font-size:13px;color:var(--text-2);">이 업무의 팀원으로 참여하고 있습니다. 탭2에서 기대치를 작성해 주세요.</p>
+          </div>`;
+      } else {
+        el.innerHTML = `
+          <div class="card">
+            <div class="info-row"><span class="k">업무명</span><span class="v">${escapeHtml(t.title)}</span></div>
+            <div class="info-row"><span class="k">설명</span><span class="v">${escapeHtml(t.description || '-')}</span></div>
+            <div class="info-row"><span class="k">완료 목표</span><span class="v">${escapeHtml(t.dueDate || '-')}</span></div>
+            <div class="info-row"><span class="k">팀원</span><span class="v">${escapeHtml(t.memberName)}</span></div>
+
+            <p class="invite-label">팀원 초대 링크 (이 링크를 팀원에게 전달)</p>
+            <div class="invite-box">
+              <span class="url">${buildLink('member')}</span>
+              <button class="btn ghost" onclick="copyLink('member', this)">복사</button>
+            </div>
+
+            <p class="invite-label">내 링크 (팀장용, 즐겨찾기 해두면 편함)</p>
+            <div class="invite-box">
+              <span class="url">${buildLink('leader')}</span>
+              <button class="btn ghost" onclick="copyLink('leader', this)">복사</button>
+            </div>
+          </div>`;
+      }
+      return;
+    }
+
+    // 업무가 아직 없는 경우: 생성 폼 (팀장만 해당)
+    el.innerHTML = `
+      <div class="card">
+        <form id="taskForm">
+          <div class="field">
+            <label>업무명</label>
+            <input id="f_title" required placeholder="예: 3분기 리텐션 개선 리포트">
+          </div>
+          <div class="field">
+            <label>업무 설명</label>
+            <textarea id="f_desc" placeholder="간단한 배경, 범위 등을 적어주세요"></textarea>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>완료 시점</label>
+              <input id="f_due" type="date">
+            </div>
+            <div class="field"></div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>팀장 이름</label>
+              <input id="f_leader" required placeholder="본인 이름">
+            </div>
+            <div class="field">
+              <label>팀원 이름</label>
+              <input id="f_member" required placeholder="함께할 팀원 이름">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn">업무 만들고 시작하기</button>
+          </div>
+        </form>
+      </div>`;
+
+    document.getElementById('taskForm').addEventListener('submit', createTask);
+  }
+
+  async function createTask(e){
+    e.preventDefault();
+    const id = crypto.randomUUID();
+    const task = {
+      id,
+      title: document.getElementById('f_title').value.trim(),
+      description: document.getElementById('f_desc').value.trim(),
+      dueDate: document.getElementById('f_due').value || null,
+      leaderName: document.getElementById('f_leader').value.trim(),
+      memberName: document.getElementById('f_member').value.trim(),
+      status: 'collecting',
+      createdAt: new Date().toISOString()
+    };
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = '생성 중...';
+    try{
+      const res = await fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'task', taskId: id, data: task })
+      });
+      if(!res.ok) throw new Error('저장 실패');
+      location.href = `${location.pathname}?taskId=${id}&role=leader`;
+    }catch(err){
+      alert('업무 생성에 실패했습니다: ' + err.message);
+      btn.disabled = false; btn.textContent = '업무 만들고 시작하기';
+    }
+  }
+
+  async function loadTask(){
+    if(!state.taskId){ renderTab1(); return; }
+    renderTab1(); // 로딩 표시 먼저
+    try{
+      const res = await fetch(`/api/state?type=task&taskId=${state.taskId}`);
+      state.task = await res.json();
+    }catch(e){
+      state.task = null;
+    }
+    renderTaskSummary();
+    renderTab1();
+  }
+
+  const QUESTIONS = {
+    leader: {
+      WHY: [
+        '이 업무를 팀원에게 맡긴 가장 중요한 이유는 무엇인가요?',
+        '이 업무를 통해 팀/조직에 어떤 기여가 이루어지기를 기대하나요?'
+      ],
+      WHAT: [
+        '이 업무에서 팀원이 반드시 수행해야 할 핵심 과제와 책임 범위는 어디까지라고 기대하나요?',
+        '이 업무에서 팀원이 가장 우선적으로 집중해야 할 것은 무엇인가요?'
+      ],
+      OUTPUT: [
+        '어떤 결과가 나오면 이 업무를 "잘 수행했다"고 판단할 수 있나요?',
+        '반드시 충족해야 한다고 기대하는 결과 기준 3가지는 무엇인가요?'
+      ]
+    },
+    member: {
+      WHY: [
+        '팀장님이 나에게 이 업무를 맡긴 가장 중요한 이유는 무엇이라고 이해하고 있나요?',
+        '이 업무를 통해 내가 팀/조직에 어떤 기여를 해야 한다고 이해하고 있나요?'
+      ],
+      WHAT: [
+        '이 업무에서 내가 반드시 수행해야 할 핵심 과제와 책임 범위는 어디까지라고 이해하고 있나요?',
+        '이 업무에서 내가 가장 우선적으로 집중해야 할 것은 무엇이라고 이해하고 있나요?'
+      ],
+      OUTPUT: [
+        '어떤 결과를 만들어야 팀장님이 이 업무를 "잘 수행했다"고 판단할 것이라고 생각하나요?',
+        '내가 반드시 충족해야 한다고 이해하고 있는 결과 기준 3가지는 무엇인가요?'
+      ]
+    }
+  };
+  const ANSWER_KEYS = { WHY: ['why1','why2'], WHAT: ['what1','what2'], OUTPUT: ['output1','output2'] };
+  let tab2EditMode = false;
+
+  function areaBlocksHtml(role, mode, answers){
+    // mode: 'form' | 'view'
+    return ['WHY','WHAT','OUTPUT'].map(area=>{
+      const qs = QUESTIONS[role][area];
+      const keys = ANSWER_KEYS[area];
+      const items = qs.map((q, i)=>{
+        const key = keys[i];
+        if(mode === 'form'){
+          return `
+            <div class="q-item">
+              <label>${escapeHtml(q)}</label>
+              <textarea id="ans_${key}" data-key="${key}">${escapeHtml(answers ? answers[key] : '')}</textarea>
+            </div>`;
+        }
+        return `
+          <div class="q-item">
+            <label>${escapeHtml(q)}</label>
+            <div class="answer-view">${escapeHtml(answers[key]) || '-'}</div>
+          </div>`;
+      }).join('');
+      return `
+        <div class="area-block">
+          <div class="area-head">
+            <span class="area-code">${area}</span>
+            <span class="area-name">${area === 'WHY' ? '목적과 맥락' : area === 'WHAT' ? '업무와 과제' : '결과 기준'}</span>
+          </div>
+          ${items}
+        </div>`;
+    }).join('');
+  }
+
+  function renderTab2(){
+    const el = document.getElementById('tab2Content');
+
+    if(!state.taskId){
+      el.innerHTML = `<div class="placeholder"><div class="msg">먼저 탭1에서 업무를 만들거나, 전달받은 링크로 접속해 주세요.</div></div>`;
+      return;
+    }
+    if(state.role !== 'leader' && state.role !== 'member'){
+      el.innerHTML = `<div class="placeholder"><div class="msg">역할이 지정되지 않았습니다. 전달받은 링크로 다시 접속해 주세요.</div></div>`;
+      return;
+    }
+    if(!state.task){
+      el.innerHTML = `<div class="placeholder"><div class="msg">업무 정보를 불러오는 중입니다...</div></div>`;
+      return;
+    }
+
+    // 제출 완료 + 수정모드 아님 -> 읽기 전용 뷰
+    if(state.myExpectation && !tab2EditMode){
+      el.innerHTML = `
+        <div class="card">
+          <div class="submitted-note">
+            <span class="txt">제출 완료 (${new Date(state.myExpectation.submittedAt).toLocaleString('ko-KR')})</span>
+            <button class="btn ghost" onclick="tab2EditMode=true; renderTab2();">다시 작성</button>
+          </div>
+          ${areaBlocksHtml(state.role, 'view', state.myExpectation.answers)}
+          <p class="wait-note">상대방 답변은 양쪽 모두 제출을 완료하면 탭3에서 확인할 수 있습니다.</p>
+        </div>`;
+      return;
+    }
+
+    // 작성/수정 폼
+    el.innerHTML = `
+      <div class="card">
+        <form id="expectationForm">
+          ${areaBlocksHtml(state.role, 'form', state.myExpectation ? state.myExpectation.answers : null)}
+          <div class="form-actions">
+            ${state.myExpectation ? '<button type="button" class="btn ghost" onclick="tab2EditMode=false; renderTab2();">취소</button>' : ''}
+            <button type="submit" class="btn" style="margin-left:8px;">제출하기</button>
+          </div>
+        </form>
+      </div>`;
+    document.getElementById('expectationForm').addEventListener('submit', submitExpectation);
+  }
+
+  async function submitExpectation(e){
+    e.preventDefault();
+    const answers = {};
+    document.querySelectorAll('#expectationForm textarea').forEach(t=>{
+      answers[t.dataset.key] = t.value.trim();
+    });
+    const empty = Object.values(answers).some(v => !v);
+    if(empty){ alert('모든 문항에 답변해 주세요.'); return; }
+
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = '제출 중...';
+    try{
+      const data = { answers, submittedAt: new Date().toISOString() };
+      const res = await fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'expectation', taskId: state.taskId, role: state.role, data })
+      });
+      if(!res.ok) throw new Error('저장 실패');
+      state.myExpectation = data;
+      tab2EditMode = false;
+      renderTab2();
+    }catch(err){
+      alert('제출에 실패했습니다: ' + err.message);
+      btn.disabled = false; btn.textContent = '제출하기';
+    }
+  }
+
+  async function loadExpectation(){
+    if(!state.taskId || (state.role !== 'leader' && state.role !== 'member')){
+      renderTab2();
+      return;
+    }
+    try{
+      const res = await fetch(`/api/state?type=expectation&taskId=${state.taskId}&role=${state.role}`);
+      state.myExpectation = await res.json();
+    }catch(e){
+      state.myExpectation = null;
+    }
+    renderTab2();
+  }
+
+  const GEMINI_MODEL = 'gemini-2.5-flash';
+  const GAP_LEVEL_LABEL = { high: '차이가 큽니다', medium: '약간 다릅니다', low: '거의 일치합니다' };
+  const AREA_NAME = { WHY: '목적과 맥락', WHAT: '업무와 과제', OUTPUT: '결과 기준' };
+  const AREA_ORDER = { high: 0, medium: 1, low: 2 };
+
+  function renderTab3(){
+    const el = document.getElementById('tab3Content');
+
+    if(!state.taskId || (state.role !== 'leader' && state.role !== 'member')){
+      el.innerHTML = `<div class="placeholder"><div class="msg">업무 링크로 먼저 접속해 주세요.</div></div>`;
+      return;
+    }
+    if(!state.expectations){
+      el.innerHTML = `<div class="placeholder"><div class="msg">답변 제출 현황을 확인하는 중입니다...</div></div>`;
+      return;
+    }
+    const { leader, member } = state.expectations;
+    if(!leader || !member){
+      const mine = state.role === 'leader' ? leader : member;
+      const otherLabel = state.role === 'leader' ? '팀원' : '팀장';
+      el.innerHTML = `
+        <div class="placeholder">
+          <div class="msg">${!mine ? '탭2에서 본인 기대치를 먼저 제출해 주세요.' : otherLabel + '이 아직 답변을 제출하지 않았습니다.'}</div>
+          <div class="step">양쪽이 모두 제출하면 Gap 분석을 시작할 수 있습니다.</div>
+        </div>`;
+      return;
+    }
+
+    if(!state.gap){
+      el.innerHTML = `
+        <div class="card" style="text-align:center;padding:36px 24px;">
+          <p style="font-size:13.5px;color:var(--text-2);margin:0 0 16px;">
+            팀장과 팀원 모두 답변을 제출했습니다. AI가 영역별 차이를 분석합니다.
+          </p>
+          <button class="btn" onclick="runGapAnalysis()">AI 분석 시작</button>
+        </div>`;
+      return;
+    }
+
+    const areas = ['WHY','WHAT','OUTPUT'].map(a => ({ key:a, ...state.gap.areas[a] }))
+      .sort((x,y)=> (AREA_ORDER[x.gapLevel] ?? 1) - (AREA_ORDER[y.gapLevel] ?? 1));
+
+    const cards = areas.map(a=>{
+      const keys = ANSWER_KEYS[a.key];
+      const leaderAns = keys.map(k=>leader.answers[k]);
+      const memberAns = keys.map(k=>member.answers[k]);
+      return `
+        <div class="gap-card">
+          <div class="gap-card-head">
+            <span class="area-code">${a.key}</span>
+            <span class="area-name">${AREA_NAME[a.key]}</span>
+            <span class="gap-level ${a.gapLevel}">${GAP_LEVEL_LABEL[a.gapLevel] || a.gapLevel}</span>
+          </div>
+          <div class="gap-cols">
+            <div class="gap-col">
+              <h4>팀장 기대</h4>
+              ${leaderAns.map(t=>`<div class="a">${escapeHtml(t)}</div>`).join('')}
+            </div>
+            <div class="gap-col">
+              <h4>팀원 이해</h4>
+              ${memberAns.map(t=>`<div class="a">${escapeHtml(t)}</div>`).join('')}
+            </div>
+          </div>
+          <div class="gap-desc">
+            <span class="lbl">AI 분석</span>
+            ${escapeHtml(a.gapDescription)}
+          </div>
+          <ul class="iq-list">
+            ${(a.interviewQuestions || []).map(q=>`<li>${escapeHtml(q)}</li>`).join('')}
+          </ul>
+        </div>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div class="gap-toolbar">
+        <span class="hint">Gap이 큰 영역부터 정렬되어 있습니다. 위에서부터 면담을 진행해 보세요.</span>
+        <button class="btn ghost" onclick="runGapAnalysis()">다시 분석</button>
+      </div>
+      ${cards}`;
+  }
+
+  async function loadBothExpectations(){
+    if(!state.taskId){ state.expectations = null; renderTab3(); return; }
+    try{
+      const res = await fetch(`/api/state?type=expectation&taskId=${state.taskId}`);
+      state.expectations = await res.json();
+    }catch(e){
+      state.expectations = null;
+    }
+    renderTab3();
+  }
+
+  async function loadGap(){
+    if(!state.taskId){ return; }
+    try{
+      const res = await fetch(`/api/state?type=gap&taskId=${state.taskId}`);
+      state.gap = await res.json();
+    }catch(e){
+      state.gap = null;
+    }
+    renderTab3();
+    renderTab4();
+  }
+
+  function buildGapPrompt(task, leader, member){
+    const section = (area) => {
+      const keys = ANSWER_KEYS[area];
+      return `[${area} 영역]
+팀장 답변1: ${leader.answers[keys[0]]}
+팀장 답변2: ${leader.answers[keys[1]]}
+팀원 답변1: ${member.answers[keys[0]]}
+팀원 답변2: ${member.answers[keys[1]]}`;
+    };
+    return `당신은 조직 내 팀장과 팀원 간 업무 기대치 차이를 짚어주는 퍼실리테이터입니다.
+아래는 같은 업무에 대해 팀장은 "기대"를, 팀원은 "이해"를 각각 상대방의 답변을 보지 않고 독립적으로 작성한 내용입니다.
+누가 맞고 틀렸는지 점수나 정답을 매기지 말고, 두 사람이 구체적으로 무엇을 다르게 이해하고 있는지 설명하세요.
+
+업무명: ${task.title}
+업무 설명: ${task.description || '(설명 없음)'}
+
+${section('WHY')}
+
+${section('WHAT')}
+
+${section('OUTPUT')}
+
+아래 JSON 형식으로만 답하세요. 코드블록이나 다른 설명 문장 없이 순수 JSON만 출력하세요.
+{
+  "WHY": { "gapDescription": "구체적으로 무엇이 다른지 3~4문장", "gapLevel": "high|medium|low", "interviewQuestions": ["대화 질문1", "대화 질문2"] },
+  "WHAT": { "gapDescription": "...", "gapLevel": "high|medium|low", "interviewQuestions": ["...", "..."] },
+  "OUTPUT": { "gapDescription": "...", "gapLevel": "high|medium|low", "interviewQuestions": ["...", "..."] }
+}
+gapLevel 기준: 핵심 내용 자체가 다르면 high, 뉘앙스 정도만 다르면 medium, 사실상 같으면 low.
+interviewQuestions는 팀장과 팀원이 함께 나눌 열린 질문으로, 어느 한쪽이 옳다는 전제 없이 작성하세요.`;
+  }
+
+  async function callGemini(promptText){
+    if(!state.geminiKey){
+      throw new Error('Gemini API 키가 없습니다. 상단의 "키 등록" 버튼으로 먼저 등록해 주세요.');
+    }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${state.geminiKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+    });
+    if(!res.ok){
+      const errBody = await res.text().catch(()=> '');
+      throw new Error(`Gemini API 호출 실패 (${res.status}). API 키를 확인해 주세요.`);
+    }
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if(!text) throw new Error('Gemini 응답에서 결과를 찾지 못했습니다.');
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    try{
+      return JSON.parse(cleaned);
+    }catch(e){
+      throw new Error('Gemini 응답을 해석하지 못했습니다. 다시 시도해 주세요.');
+    }
+  }
+
+  async function runGapAnalysis(){
+    const el = document.getElementById('tab3Content');
+    el.innerHTML = `<div class="analyzing-box">AI가 영역별 차이를 분석하고 있습니다...</div>`;
+    try{
+      const { leader, member } = state.expectations;
+      const prompt = buildGapPrompt(state.task, leader, member);
+      const areas = await callGemini(prompt);
+      const gapData = { areas, generatedAt: new Date().toISOString() };
+      await fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'gap', taskId: state.taskId, data: gapData })
+      });
+      state.gap = gapData;
+      renderTab3();
+    }catch(err){
+      el.innerHTML = `
+        <div class="placeholder">
+          <div class="msg">${escapeHtml(err.message)}</div>
+          <div class="step" style="margin-top:12px;"><button class="btn ghost" onclick="runGapAnalysis()">다시 시도</button></div>
+        </div>`;
+    }
+  }
+
+  function renderTab4(){
+    const el = document.getElementById('tab4Content');
+
+    if(!state.taskId || (state.role !== 'leader' && state.role !== 'member')){
+      el.innerHTML = `<div class="placeholder"><div class="msg">업무 링크로 먼저 접속해 주세요.</div></div>`;
+      return;
+    }
+    if(!state.gap){
+      el.innerHTML = `<div class="placeholder"><div class="msg">먼저 탭3에서 Gap 분석과 면담을 진행해 주세요.</div></div>`;
+      return;
+    }
+
+    const areas = ['WHY','WHAT','OUTPUT'];
+    const banner = state.agreement
+      ? `<div class="agreed-banner"><span>최종 합의 완료 (${new Date(state.agreement.agreedAt).toLocaleString('ko-KR')})</span></div>`
+      : '';
+
+    const blocks = areas.map(a=>{
+      const g = state.gap.areas[a];
+      const prev = state.agreement ? state.agreement.agreed[a] : '';
+      return `
+        <div class="agree-block">
+          <div class="area-head">
+            <span class="area-code">${a}</span>
+            <span class="area-name">${AREA_NAME[a]}</span>
+            <span class="gap-level ${g.gapLevel}">${GAP_LEVEL_LABEL[g.gapLevel] || g.gapLevel}</span>
+          </div>
+          <div class="gap-summary">${escapeHtml(g.gapDescription)}</div>
+          <textarea id="agree_${a}" data-key="${a}" placeholder="면담 후 합의된 내용을 정리해 주세요">${escapeHtml(prev)}</textarea>
+        </div>`;
+    }).join('');
+
+    el.innerHTML = `
+      ${banner}
+      <div class="card">
+        ${blocks}
+        <div class="form-actions">
+          <button class="btn" onclick="submitAgreement()">합의 내용 저장</button>
+        </div>
+      </div>`;
+  }
+
+  async function submitAgreement(){
+    const agreed = {};
+    ['WHY','WHAT','OUTPUT'].forEach(a=>{
+      agreed[a] = document.getElementById(`agree_${a}`).value.trim();
+    });
+    if(Object.values(agreed).some(v=>!v)){
+      alert('세 영역 모두 합의 내용을 입력해 주세요.');
+      return;
+    }
+    const data = { agreed, agreedAt: new Date().toISOString() };
+    try{
+      await fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'agreement', taskId: state.taskId, data })
+      });
+      state.agreement = data;
+
+      // 업무 상태를 '합의 완료'로 갱신
+      state.task.status = 'agreed';
+      await fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'task', taskId: state.taskId, data: state.task })
+      });
+      renderTaskSummary();
+      renderTab4();
+    }catch(err){
+      alert('저장에 실패했습니다: ' + err.message);
+    }
+  }
+
+  async function loadAgreement(){
+    if(!state.taskId){ return; }
+    try{
+      const res = await fetch(`/api/state?type=agreement&taskId=${state.taskId}`);
+      state.agreement = await res.json();
+    }catch(e){
+      state.agreement = null;
+    }
+    renderTab4();
+  }
+
+  renderRole();
+  renderKeybar();
+  renderTaskSummary();
+  renderTab2();
+  renderTab3();
+  renderTab4();
+  loadTask().then(() => Promise.all([loadExpectation(), loadBothExpectations(), loadGap(), loadAgreement()]));
+</script>
+
+</body>
+</html>
