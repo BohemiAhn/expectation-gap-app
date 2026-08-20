@@ -292,6 +292,15 @@
     background:var(--sage-light);color:var(--sage-text);
     border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:18px;font-size:13px;font-weight:600;
   }
+
+  /* 업무 목록 모달 */
+  .task-list-item{
+    padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);
+    margin-bottom:8px;cursor:pointer;transition:border-color .15s;
+  }
+  .task-list-item:hover{border-color:var(--sage);}
+  .tli-title{font-size:13.5px;font-weight:600;margin-bottom:4px;color:var(--text);}
+  .tli-meta{font-size:12px;color:var(--text-2);}
 </style>
 </head>
 <body>
@@ -304,6 +313,8 @@
       <div class="brand-name">기대치 정렬</div>
     </div>
     <div class="role-badge">
+      <button class="btn ghost" onclick="openTaskListModal()" style="margin-right:6px;">업무 목록</button>
+      <button class="btn ghost" onclick="location.href=location.pathname" style="margin-right:10px;">새 업무 만들기</button>
       <span id="roleLabel">역할 확인 중</span>
       <span id="rolePill" class="role-pill none">-</span>
     </div>
@@ -598,8 +609,41 @@
     }catch(e){
       state.task = null;
     }
+    if(state.task && (state.role === 'leader' || state.role === 'member')){
+      saveMyTasksEntry({
+        taskId: state.taskId, role: state.role, title: state.task.title,
+        status: state.task.status, updatedAt: Date.now()
+      });
+    }
     renderTaskSummary();
     renderTab1();
+  }
+
+  function loadMyTasks(){
+    try{ return JSON.parse(localStorage.getItem('my_tasks') || '[]'); }
+    catch(e){ return []; }
+  }
+  function saveMyTasksEntry(entry){
+    const list = loadMyTasks().filter(t => !(t.taskId === entry.taskId && t.role === entry.role));
+    list.unshift(entry);
+    localStorage.setItem('my_tasks', JSON.stringify(list.slice(0, 50)));
+  }
+  function openTaskListModal(){
+    const list = loadMyTasks();
+    const body = document.getElementById('taskListBody');
+    if(list.length === 0){
+      body.innerHTML = `<div class="placeholder" style="padding:24px;"><div class="msg">아직 접속한 업무가 없습니다.</div></div>`;
+    } else {
+      body.innerHTML = list.map(t => `
+        <div class="task-list-item" onclick="location.href='${location.pathname}?taskId=${t.taskId}&role=${t.role}'">
+          <div class="tli-title">${escapeHtml(t.title)}</div>
+          <div class="tli-meta">${t.role === 'leader' ? '팀장' : '팀원'} · ${new Date(t.updatedAt).toLocaleDateString('ko-KR')} · ${STATUS_LABEL[t.status] || t.status}</div>
+        </div>`).join('');
+    }
+    document.getElementById('taskListModal').classList.add('open');
+  }
+  function closeTaskListModal(){
+    document.getElementById('taskListModal').classList.remove('open');
   }
 
   const QUESTIONS = {
@@ -1033,6 +1077,17 @@ interviewQuestions는 팀장과 팀원이 함께 나눌 열린 질문으로, 어
   renderTab4();
   loadTask().then(() => Promise.all([loadExpectation(), loadBothExpectations(), loadGap(), loadAgreement()]));
 </script>
+
+<div id="taskListModal" class="modal-backdrop">
+  <div class="modal" style="max-width:480px;">
+    <h3>내 업무 목록</h3>
+    <p>이 브라우저에서 접속했던 업무 목록입니다. 다른 기기에서 접속한 기록은 보이지 않습니다.</p>
+    <div id="taskListBody"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeTaskListModal()">닫기</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
