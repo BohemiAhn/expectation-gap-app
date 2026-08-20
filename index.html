@@ -900,7 +900,9 @@ interviewQuestions는 팀장과 팀원이 함께 나눌 열린 질문으로, 어
     });
     if(!res.ok){
       const errBody = await res.text().catch(()=> '');
-      throw new Error(`Gemini API 호출 실패 (${res.status}). API 키를 확인해 주세요.`);
+      let detail = '';
+      try{ detail = JSON.parse(errBody)?.error?.message || ''; }catch(e){ detail = errBody.slice(0, 200); }
+      throw new Error(`Gemini API 호출 실패 (${res.status}). ${detail || 'API 키 또는 모델명을 확인해 주세요.'}`);
     }
     const data = await res.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
