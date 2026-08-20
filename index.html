@@ -1185,7 +1185,13 @@ interviewQuestions는 팀장과 팀원이 함께 나눌 열린 질문으로, 어
     const { subject, body } = buildAgreementEmailText();
     const to = prompt('받는 사람 이메일 주소를 입력하세요 (여러 명이면 쉼표로 구분)') || '';
     const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(url, '_blank');
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   // 별도 가입 없이: 컴퓨터에 설정된 기본 메일 앱(Outlook 등)으로 초안 열기
