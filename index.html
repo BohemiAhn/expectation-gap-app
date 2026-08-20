@@ -1045,7 +1045,8 @@ interviewQuestions는 팀장과 팀원이 함께 나눌 열린 질문으로, 어
            <div class="export-actions">
              <button class="btn ghost small" onclick="exportAgreementPDF()">PDF로 저장</button>
              <button class="btn ghost small" onclick="exportAgreementWord()">Word로 저장</button>
-             <button class="btn ghost small" onclick="exportAgreementEmail()">이메일로 보내기</button>
+             <button class="btn ghost small" onclick="exportAgreementEmailGmail()">Gmail로 보내기</button>
+             <button class="btn ghost small" onclick="exportAgreementEmailDefault()">기본 메일앱으로 보내기</button>
            </div>
          </div>`
       : '';
@@ -1168,15 +1169,29 @@ interviewQuestions는 팀장과 팀원이 함께 나눌 열린 질문으로, 어
     a.remove();
   }
 
-  function exportAgreementEmail(){
+  function buildAgreementEmailText(){
     const t = state.task;
     const lines = ['WHY','WHAT','OUTPUT'].map(a =>
       `[${a} · ${AREA_NAME[a]}]\n${state.agreement.agreed[a]}\n`
     ).join('\n');
-    const body = `업무명: ${t.title}\n팀장: ${t.leaderName} / 팀원: ${t.memberName}\n완료 목표: ${t.dueDate || '-'}\n\n${lines}`;
-    const subject = encodeURIComponent(`[기대치 합의] ${t.title}`);
-    const encodedBody = encodeURIComponent(body);
-    location.href = `mailto:?subject=${subject}&body=${encodedBody}`;
+    return {
+      subject: `[기대치 합의] ${t.title}`,
+      body: `업무명: ${t.title}\n팀장: ${t.leaderName} / 팀원: ${t.memberName}\n완료 목표: ${t.dueDate || '-'}\n\n${lines}`
+    };
+  }
+
+  // 별도 가입 없이: 구글 로그인이 되어 있으면 Gmail 웹 작성 화면으로 바로 이동
+  function exportAgreementEmailGmail(){
+    const { subject, body } = buildAgreementEmailText();
+    const to = prompt('받는 사람 이메일 주소를 입력하세요 (여러 명이면 쉼표로 구분)') || '';
+    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(url, '_blank');
+  }
+
+  // 별도 가입 없이: 컴퓨터에 설정된 기본 메일 앱(Outlook 등)으로 초안 열기
+  function exportAgreementEmailDefault(){
+    const { subject, body } = buildAgreementEmailText();
+    location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 
   renderRole();
